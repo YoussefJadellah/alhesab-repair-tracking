@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f4f7fb">
+<title>تتبع صيانة جهازك</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eef2f7;color:#14243d;font:15px system-ui,"Segoe UI",Tahoma,sans-serif}.frame{max-width:430px;min-height:100vh;margin:auto;padding:12px;background:#17243a}.card{min-height:calc(100vh - 24px);padding:22px 16px 18px;background:#f7f9fc;border-radius:0 0 32px 32px}.heading{text-align:center;color:#56708f;font-size:13px;margin:2px 0 4px}.invoice{text-align:center;font-weight:800;font-size:19px;color:#14243d;direction:ltr;unicode-bidi:embed;margin-bottom:20px}.device{display:flex;align-items:center;gap:12px;padding:14px 15px;background:#fff;border:1px solid #e5ebf2;border-radius:18px;box-shadow:0 2px 4px #16243a0a}.phone{width:40px;height:40px;display:grid;place-items:center;background:#eef4ff;color:#315eea;font-size:21px;border-radius:12px;flex:none}.device-name{font-weight:750}.issue{margin-top:4px;color:#75849b;font-size:13px}.status{margin:18px 0 12px;display:grid;gap:2px}.step{display:grid;grid-template-columns:25px 1fr;align-items:center;min-height:34px;color:#8795a8;font-size:13px}.dot{width:18px;height:18px;border-radius:50%;background:#e5eaf1;border:1px solid #bdc8d8;display:grid;place-items:center;font-size:11px}.step.done{color:#04a853}.step.done .dot{background:#18c46a;border-color:#18c46a;color:white}.step.current{color:#2863e8}.step.current .dot{background:#3477ff;border-color:#3477ff;color:white}.step.future{color:#8b98aa}.eta{padding:11px 14px;background:#edf1f7;border-radius:16px;text-align:center;color:#526783;font-size:12px}.updated{text-align:center;color:#8693a6;font-size:11px;margin-top:13px}.message{padding:16px;background:#fff;border:1px solid #e3e9f1;border-radius:12px;text-align:center;color:#526783}.hide{display:none}@media(min-width:480px){.frame{margin:28px auto;min-height:0}.card{min-height:630px;border-radius:0 0 32px 32px}}
+</style>
+</head>
+<body><main class="frame"><section class="card"><div class="heading">تتبع جهازك</div><div class="invoice" id="invoice">فاتورة #—</div><div id="message" class="message">جارٍ تحميل بيانات الصيانة…</div><div id="content" class="hide"><div class="device"><div class="phone" aria-hidden="true">▣</div><div><div class="device-name" id="device">—</div><div class="issue" id="issue">—</div></div></div><div class="status" id="steps"></div><div class="eta">موعد التسليم: <b id="expected">سيتم تحديده</b></div><div class="updated">آخر تحديث: <span id="updated">—</span></div></div></section></main>
+<script>
+(() => {
+ const API='https://aazvvsjfpmjspzsekrnj.supabase.co/functions/v1/repair-tracker';
+ const states=[['received','تم الاستلام'],['diagnosing','قيد الفحص'],['repairing','قيد الإصلاح'],['ready','جاهز للاستلام'],['delivered','تم التسليم']];
+ const token=new URLSearchParams(location.search).get('token')||'';const $=id=>document.getElementById(id);
+ function showMessage(text,error=false){$('message').textContent=text;$('message').style.color=error?'#b42318':'';}
+ async function refresh(){
+  if(!/^[a-f0-9]{48}$/.test(token)){showMessage('رابط المتابعة غير صالح.',true);return;}
+  try{
+   const res=await fetch(`${API}?token=${encodeURIComponent(token)}`,{cache:'no-store'});const d=await res.json().catch(()=>({}));if(!res.ok)throw new Error(d.error||'لم يتم العثور على طلب الصيانة');
+   $('invoice').textContent=`فاتورة #${d.invoice_no||'—'}`;$('device').textContent=d.device||'جهاز صيانة';$('issue').textContent=d.issue?`المشكلة: ${d.issue}`:'تفاصيل العطل قيد التحديث';$('expected').textContent=d.expected_at||'سيتم تحديده';$('updated').textContent=d.updated_at?new Date(d.updated_at).toLocaleString('ar-EG'):'—';
+   const active=states.findIndex(x=>x[0]===d.status);$('steps').replaceChildren(...states.map(([key,label],i)=>{const row=document.createElement('div');row.className='step '+(i<active?'done':i===active?'current':'future');const dot=document.createElement('span');dot.className='dot';dot.textContent=i<active?'✓':i===active?'•':'';const text=document.createElement('span');text.textContent=label;row.append(dot,text);return row;}));
+   $('message').classList.add('hide');$('content').classList.remove('hide');
+  }catch(e){$('content').classList.add('hide');$('message').classList.remove('hide');showMessage(e.message||'تعذر تحميل الحالة حالياً',true);}
+ }
+ refresh();setInterval(refresh,15000);
+})();
+</script></body></html>
